@@ -84,16 +84,20 @@ export async function contact(req: Request, res: Response) {
     return res.json({ ok: true, message: CONTACT_SUCCESS.SENT });
   }
 
-  console.log("📧 Preparing to send email with transporter…");
-  const transporter = nodemailer.createTransport({
-    host: "ssl0.ovh.net",
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-  });
+console.log("📧 Preparing to send email with transporter…");
+
+const transporter = nodemailer.createTransport({
+  host: "ssl0.ovh.net",
+  port: 587,         
+  secure: false,  
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false, 
+  },
+});
 
   try {
     const info = await transporter.sendMail({

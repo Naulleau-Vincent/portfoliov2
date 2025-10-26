@@ -5,18 +5,24 @@ import { sendContact, type ContactPayload } from "../api/contact";
 import { useAuth } from "../auth/useAuth";
 
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-declare const grecaptcha: {
-  execute(siteKey: string, options: { action: string }): Promise<string>;
-};
 
-const EMPTY_CONTACT: ContactPayload = Object.freeze({
+declare global {
+  interface Window {
+    grecaptcha: {
+      ready: (cb: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
+
+const EMPTY_CONTACT: ContactPayload = {
   name: "",
   email: "",
   subject: "",
   message: "",
   website: "",
   captcha: "",
-});
+};
 
 const sanitizeInput = (value: string) => value.replace(/[<>]/g, "");
 
@@ -63,30 +69,37 @@ const Contact: React.FC = () => {
     e.preventDefault();
     if (!valid) return;
 
-    if (data.website) {
-      setSent(true);
-      setData(EMPTY_CONTACT);
+    const website = data.website || "";
+    if (website.trim() !== "") {
+      console.log("🧠 Honeypot triggered, skipping submission");
       return;
     }
 
     setLoading(true);
+
     try {
-      const token = await grecaptcha.execute(
-        import.meta.env.VITE_RECAPTCHA_SITE_KEY,
+      await new Promise<void>((resolve, reject) => {
+        if (!window.grecaptcha) {
+          reject(new Error("reCAPTCHA not loaded"));
+          return;
+        }
+        window.grecaptcha.ready(() => resolve());
+      });
+      const token = await window.grecaptcha.execute(
+        "6LdDBqYrAAAAAKftPJnbYXxI5OtNWId3AoG89SIW", 
         { action: "submit" }
       );
 
       await sendContact({
         ...data,
-        subject: data.subject.trim(),
-        message: data.message.trim(),
+        website,
         captcha: token,
       });
 
       setSent(true);
-      setData(EMPTY_CONTACT);
-    } catch {
-      return;
+      setData({ ...EMPTY_CONTACT });
+    } catch (err) {
+      console.error("❌ Error sending contact form:", err);
     } finally {
       setLoading(false);
     }
@@ -123,7 +136,9 @@ const Contact: React.FC = () => {
                    shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl p-8 sm:p-10"
       >
         <style>{`.grecaptcha-badge { visibility: hidden; }`}</style>
+
         <div className="grid gap-5">
+          {/* honeypot */}
           <input
             id="website"
             name="website"
