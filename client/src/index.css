@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+body, html {
+  margin: 0;
+  padding: 0;
+}
+html {
+  scroll-behavior: smooth;
+}
+.background-container {
+  background-image: url("/background.webp");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  width: 100%;
+  height: 100vh;
+}
